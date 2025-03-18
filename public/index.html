@@ -261,16 +261,16 @@
         });
 
         async function fetchAndDisplayKline(symbol) {
-            console.log('Fetching kline data for:', symbol);
             try {
                 const response = await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=60&limit=1000`);
                 const data = await response.json();
                 
-                console.log('Received data:', data);
-                
                 if (data.result && data.result.list) {
                     const klineList = data.result.list.reverse();
-                    const initialPrice = parseFloat(klineList[0][1]); // First open price as reference
+                    const initialPrice = parseFloat(klineList[0][1]);
+
+                    let maxPercentage = -Infinity;
+                    let minPercentage = Infinity;
 
                     const klineData = klineList.map(item => {
                         const open = parseFloat(item[1]);
@@ -278,18 +278,49 @@
                         const low = parseFloat(item[3]);
                         const close = parseFloat(item[4]);
 
-                        // Convert prices to percentage changes from initial price
+                        const openPct = ((open - initialPrice) / initialPrice) * 100;
+                        const highPct = ((high - initialPrice) / initialPrice) * 100;
+                        const lowPct = ((low - initialPrice) / initialPrice) * 100;
+                        const closePct = ((close - initialPrice) / initialPrice) * 100;
+
+                        maxPercentage = Math.max(maxPercentage, highPct);
+                        minPercentage = Math.min(minPercentage, lowPct);
+
                         return {
                             time: parseInt(item[0]) / 1000,
-                            open: ((open - initialPrice) / initialPrice) * 100,
-                            high: ((high - initialPrice) / initialPrice) * 100,
-                            low: ((low - initialPrice) / initialPrice) * 100,
-                            close: ((close - initialPrice) / initialPrice) * 100
+                            open: openPct,
+                            high: highPct,
+                            low: lowPct,
+                            close: closePct
                         };
                     });
 
                     setupChart();
                     candlestickSeries.setData(klineData);
+
+                    // Calculate range and add padding
+                    const range = maxPercentage - minPercentage;
+                    const padding = range * 0.5;
+
+                    candlestickSeries.applyOptions({
+                        autoscaleInfoProvider: () => ({
+                            priceRange: {
+                                minValue: minPercentage - padding,
+                                maxValue: maxPercentage + padding
+                            }
+                        })
+                    });
+
+                    // Calculate the visible logical range for the last 50 candles
+                    const timeScale = chart.timeScale();
+                    const coordRange = timeScale.getVisibleLogicalRange();
+                    if (coordRange !== null) {
+                        const barsRange = {
+                            from: klineData.length - 50,
+                            to: klineData.length - 1
+                        };
+                        timeScale.setVisibleLogicalRange(barsRange);
+                    }
                     
                     document.getElementById('chartContainer').style.display = 'block';
                     document.getElementById('chartOverlay').style.display = 'block';
@@ -305,15 +336,9 @@
             const container = document.getElementById('chartContainer');
             const isMobile = window.innerWidth < 768;
             
-            // Get container dimensions
-            const containerWidth = container.clientWidth;
-            const containerHeight = container.clientHeight;
-            
-            // Create chart using the correct namespace
             chart = window.LightweightCharts.createChart(container, {
-                // Make chart responsive
-                width: containerWidth || 800,
-                height: containerHeight || 400,
+                width: isMobile ? window.innerWidth * 0.95 : (containerWidth || 800),
+                height: isMobile ? window.innerHeight * 0.6 : (containerHeight || 400),
                 layout: {
                     background: { type: 'solid', color: '#ffffff' },
                     textColor: '#333333',
@@ -327,41 +352,24 @@
                 timeScale: {
                     timeVisible: true,
                     secondsVisible: false,
-                    rightOffset: isMobile ? 5 : 12,
-                    rightBarStaysOnScroll: true,
                     borderVisible: false,
-                    fixLeftEdge: true,
-                    fixRightEdge: true,
-                    tickMarkFormatter: (time) => {
-                        const date = new Date(time * 1000);
-                        return isMobile ? 
-                            `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}` :
-                            date.toLocaleTimeString();
-                    }
+                    rightOffset: 12,  // Add some space on the right
+                    barSpacing: 6,   // Adjust the spacing between bars
+                },
+                priceScale: {
+                    position: 'right',
+                    mode: 1,
+                    autoScale: false,
+                    scaleMargins: {
+                        top: 0.3,
+                        bottom: 0.3,
+                    },
                 },
                 crosshair: {
-                    mode: isMobile ? 1 : 0, // 1 for mobile-friendly magnetic crosshair
-                    vertLine: {
-                        labelVisible: !isMobile,
-                    },
-                    horzLine: {
-                        labelVisible: !isMobile,
-                    },
-                },
-                handleScroll: {
-                    mouseWheel: true,
-                    pressedMouseMove: true,
-                    horzTouchDrag: true,
-                    vertTouchDrag: true,
-                },
-                handleScale: {
-                    axisPressedMouseMove: true,
-                    mouseWheel: true,
-                    pinch: true,
-                },
+                    mode: 0,
+                }
             });
-            
-            // Create candlestick series with percentage format
+
             candlestickSeries = chart.addCandlestickSeries({
                 upColor: '#26a69a',
                 downColor: '#ef5350',
@@ -370,19 +378,25 @@
                 wickDownColor: '#ef5350',
                 priceFormat: {
                     type: 'percent',
-                    precision: isMobile ? 1 : 2,
+                    precision: 2,
                     minMove: 0.01,
                 }
             });
 
-            // Add window resize handler
-            window.addEventListener('resize', () => {
-                const newWidth = container.clientWidth;
-                const newHeight = container.clientHeight;
-                chart.applyOptions({
-                    width: newWidth,
-                    height: newHeight,
-                });
+            // Add mouse wheel zoom handler
+            chart.applyOptions({
+                handleScale: {
+                    mouseWheel: true,
+                    pinch: true,
+                    axisPressedMouseMove: {
+                        time: true,
+                        price: true,
+                    },
+                },
+                handleScroll: {
+                    mouseWheel: true,
+                    pressedMouseMove: true,
+                },
             });
         }
 
@@ -444,6 +458,13 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
 
 
 
