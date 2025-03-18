@@ -144,14 +144,23 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 90%;
+            width: 95%;
             max-width: 800px;
-            height: 80vh;
+            height: 60vh;
             max-height: 400px;
             background: white;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             z-index: 1000;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            #chartContainer {
+                width: 98%;
+                height: 50vh;
+                top: 45%;
+            }
         }
         
         #chartOverlay {
@@ -294,15 +303,22 @@
             if (chart) return;
             
             const container = document.getElementById('chartContainer');
-            console.log('Setting up chart in container:', container);
+            const isMobile = window.innerWidth < 768;
+            
+            // Get container dimensions
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
             
             // Create chart using the correct namespace
             chart = window.LightweightCharts.createChart(container, {
-                width: 800,
-                height: 400,
+                // Make chart responsive
+                width: containerWidth || 800,
+                height: containerHeight || 400,
                 layout: {
                     background: { type: 'solid', color: '#ffffff' },
                     textColor: '#333333',
+                    fontSize: isMobile ? 10 : 12,
+                    fontFamily: 'Arial, sans-serif',
                 },
                 grid: {
                     vertLines: { color: '#f0f0f0' },
@@ -311,8 +327,37 @@
                 timeScale: {
                     timeVisible: true,
                     secondsVisible: false,
-                    rightOffset: 12,  // Add space for 12 candles on the right
-                    rightBarStaysOnScroll: true,  // Keep the right padding while scrolling
+                    rightOffset: isMobile ? 5 : 12,
+                    rightBarStaysOnScroll: true,
+                    borderVisible: false,
+                    fixLeftEdge: true,
+                    fixRightEdge: true,
+                    tickMarkFormatter: (time) => {
+                        const date = new Date(time * 1000);
+                        return isMobile ? 
+                            `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}` :
+                            date.toLocaleTimeString();
+                    }
+                },
+                crosshair: {
+                    mode: isMobile ? 1 : 0, // 1 for mobile-friendly magnetic crosshair
+                    vertLine: {
+                        labelVisible: !isMobile,
+                    },
+                    horzLine: {
+                        labelVisible: !isMobile,
+                    },
+                },
+                handleScroll: {
+                    mouseWheel: true,
+                    pressedMouseMove: true,
+                    horzTouchDrag: true,
+                    vertTouchDrag: true,
+                },
+                handleScale: {
+                    axisPressedMouseMove: true,
+                    mouseWheel: true,
+                    pinch: true,
                 },
             });
             
@@ -325,9 +370,19 @@
                 wickDownColor: '#ef5350',
                 priceFormat: {
                     type: 'percent',
-                    precision: 2,
+                    precision: isMobile ? 1 : 2,
                     minMove: 0.01,
                 }
+            });
+
+            // Add window resize handler
+            window.addEventListener('resize', () => {
+                const newWidth = container.clientWidth;
+                const newHeight = container.clientHeight;
+                chart.applyOptions({
+                    width: newWidth,
+                    height: newHeight,
+                });
             });
         }
 
@@ -389,6 +444,7 @@
     </script>
 </body>
 </html>
+
 
 
 
