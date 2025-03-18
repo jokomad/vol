@@ -14,124 +14,146 @@
         }
         .container {
             text-align: center;
-            padding: 20px;
+            padding: 10px;
             background-color: white;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Strategy box styling */
+        #strategy {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        #strategy .text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ff4444;
         }
         
         /* Current scan styling */
         #current.results {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 30px;
-            padding: 25px;
+            gap: 15px;
+            padding: 15px;
             background-color: #1a1a1a;
             border-radius: 8px;
-            white-space: nowrap;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
+        
         #current .symbol {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: bold;
             color: #00ff88;
         }
+        
+        .stats-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        #current .stats {
+            font-size: 16px;
+            color: #888888;
+            background-color: #333333;
+            padding: 5px 10px;
+            border-radius: 4px;
+            min-width: auto;
+        }
+        
         .price-box {
             display: flex;
-            flex-direction: row;  /* Changed to row for horizontal layout */
-            gap: 15px;           /* Space between LP and HP */
-            font-size: 22px;
+            gap: 15px;
+            font-size: 16px;
             background-color: #333333;
             padding: 8px 15px;
             border-radius: 6px;
-            min-width: 240px;    /* Increased to accommodate horizontal layout */
             text-align: center;
-            align-items: center; /* Center items vertically */
-            justify-content: center; /* Center items horizontally */
-        }
-
-        #current .price-box {
-            color: #ffffff;
-        }
-
-        .price-box .lp {
-            color: #ff4444;  /* Red color for lower price */
-        }
-
-        .price-box .hp {
-            color: #00ff88;  /* Green color for higher price */
-        }
-
-        #current .stats,
-        #current .timestamp {
-            font-size: 22px;
-            color: #888888;  /* Same color as timestamp */
-        }
-
-        /* History section styling */
-        .history {
-            margin-top: 20px;
-            border-top: 2px solid #eee;
-            padding-top: 20px;
-        }
-        .history .results {
-            display: flex;
             align-items: center;
             justify-content: center;
-            gap: 20px;
-            padding: 12px;
+        }
+        
+        .price-box .lp {
+            color: #ff4444;
+        }
+        
+        .price-box .hp {
+            color: #00ff88;
+        }
+        
+        #current .timestamp {
+            font-size: 16px;
+            color: #888888;
+        }
+        
+        /* History section styling */
+        .history {
+            margin-top: 15px;
+            border-top: 2px solid #eee;
+            padding-top: 15px;
+        }
+        
+        .history .results {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
             background-color: #f8f9fa;
             border-radius: 4px;
-            white-space: nowrap;
             margin-bottom: 8px;
-            transition: background-color 0.2s;
         }
-        .history .results:hover {
-            background-color: #f0f0f0;
-        }
+        
         .history .symbol {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
-            color: #666; /* Changed to match other text */
+            color: #666;
         }
+        
         .history .stats,
         .history .timestamp {
-            font-size: 16px;
+            font-size: 14px;
             color: #999;
-            min-width: 100px;
-            text-align: center;
         }
+        
         .history .price-box {
-            font-size: 16px;
+            font-size: 14px;
             background-color: transparent;
             padding: 4px 8px;
-            min-width: 180px;  /* Adjusted for history items */
         }
-
+        
         .history .price-box .lp,
         .history .price-box .hp {
             color: #666;
         }
-        .history .timestamp {
-            font-size: 16px;
-            color: #999;
-        }
-
+        
+        /* Chart container responsive sizing */
         #chartContainer {
             display: none;
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 800px;
-            height: 400px;
+            width: 90%;
+            max-width: 800px;
+            height: 80vh;
+            max-height: 400px;
             background: white;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             z-index: 1000;
         }
-
+        
         #chartOverlay {
             display: none;
             position: fixed;
@@ -143,21 +165,44 @@
             z-index: 999;
         }
 
-        /* Add new style for the strategy box */
-        #strategy {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 25px;
-            background-color: #1a1a1a;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        #strategy .text {
-            font-size: 28px;
-            font-weight: bold;
-            color: #ff4444;  /* Same red as the LP price */
+        /* Media Queries */
+        @media (min-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            #strategy .text {
+                font-size: 28px;
+            }
+            
+            #current.results {
+                flex-direction: row;
+                padding: 25px;
+            }
+            
+            #current .symbol {
+                font-size: 28px;
+            }
+            
+            #current .stats {
+                font-size: 22px;
+            }
+            
+            .price-box {
+                font-size: 22px;
+            }
+            
+            .history .results {
+                flex-direction: row;
+                justify-content: center;
+            }
+            
+            .history .symbol,
+            .history .stats,
+            .history .timestamp,
+            .history .price-box {
+                font-size: 16px;
+            }
         }
     </style>
 </head>
@@ -170,9 +215,11 @@
         
         <div id="current" class="results">
             <div id="symbol" class="symbol">Waiting for data...</div>
-            <div id="moves" class="stats"></div>
-            <div id="volume" class="stats"></div>
-            <div id="funding" class="stats"></div>
+            <div class="stats-container">
+                <div id="moves" class="stats"></div>
+                <div id="volume" class="stats"></div>
+                <div id="funding" class="stats"></div>
+            </div>
             <div id="prices" class="price-box"></div>
             <div id="timestamp" class="timestamp"></div>
         </div>
@@ -342,6 +389,7 @@
     </script>
 </body>
 </html>
+
 
 
 
