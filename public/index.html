@@ -117,7 +117,7 @@
         .history .symbol {
             font-size: 14px;
             font-weight: bold;
-            color: #666;
+            color: #130808;
         }
         
         .history .stats,
@@ -242,16 +242,27 @@
         let chart = null;
         let candlestickSeries = null;
 
-        // Debug the click handler
+        // Add click handlers for both current and historical symbols
         document.getElementById('symbol').addEventListener('click', (e) => {
-            console.log('Symbol clicked:', e.target.textContent); // Debug log
+            handleSymbolClick(e.target.textContent);
             e.stopPropagation();
-            const symbol = e.target.textContent;
+        });
+
+        document.getElementById('history').addEventListener('click', (e) => {
+            const symbolElement = e.target.closest('.symbol');
+            if (symbolElement) {
+                handleSymbolClick(symbolElement.textContent);
+                e.stopPropagation();
+            }
+        });
+
+        // Unified handler function for symbol clicks
+        function handleSymbolClick(symbol) {
             if (symbol && symbol !== 'Waiting for data...') {
                 console.log('Fetching data for:', symbol); // Debug log
                 fetchAndDisplayKline(symbol);
             }
-        });
+        }
 
         // Add click handler for closing the chart
         document.body.addEventListener('click', (e) => {
@@ -336,9 +347,13 @@
             const container = document.getElementById('chartContainer');
             const isMobile = window.innerWidth < 768;
             
+            // Get container dimensions
+            const chartWidth = isMobile ? window.innerWidth * 0.95 : 800;  // Default to 800px for desktop
+            const chartHeight = isMobile ? window.innerHeight * 0.6 : 400; // Default to 400px for desktop
+            
             chart = window.LightweightCharts.createChart(container, {
-                width: isMobile ? window.innerWidth * 0.95 : (containerWidth || 800),
-                height: isMobile ? window.innerHeight * 0.6 : (containerHeight || 400),
+                width: chartWidth,
+                height: chartHeight,
                 layout: {
                     background: { type: 'solid', color: '#ffffff' },
                     textColor: '#333333',
@@ -353,7 +368,7 @@
                     timeVisible: true,
                     secondsVisible: false,
                     borderVisible: false,
-                    rightOffset: 12,  // Add some space on the right
+                    rightOffset: 5,  // Add some space on the right
                     barSpacing: 6,   // Adjust the spacing between bars
                 },
                 priceScale: {
@@ -397,6 +412,20 @@
                     mouseWheel: true,
                     pressedMouseMove: true,
                 },
+            });
+
+            // Add window resize handler
+            window.addEventListener('resize', () => {
+                const newIsMobile = window.innerWidth < 768;
+                const newWidth = newIsMobile ? window.innerWidth * 0.95 : 800;
+                const newHeight = newIsMobile ? window.innerHeight * 0.6 : 400;
+                chart.applyOptions({
+                    width: newWidth,
+                    height: newHeight,
+                    layout: {
+                        fontSize: newIsMobile ? 10 : 12,
+                    }
+                });
             });
         }
 
@@ -458,6 +487,9 @@
     </script>
 </body>
 </html>
+
+
+
 
 
 
