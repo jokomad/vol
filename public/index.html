@@ -1,513 +1,161 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Scanner</title>
+    <title>Bybit Price Monitor</title>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://unpkg.com/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            background-color: #f0f2f5;
+            margin: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 40px;
         }
         .container {
-            text-align: center;
-            padding: 10px;
-            background-color: white;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Strategy box styling */
-        #strategy {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 15px;
-            background-color: #1a1a1a;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
-        #strategy .text {
+        .status {
+            color: #4CAF50;
             font-size: 18px;
-            font-weight: bold;
-            color: #ff4444;
+            margin-bottom: 10px;
         }
-        
-        /* Current scan styling */
-        #current.results {
+        .status.down {
+            color: #f44336;
+        }
+        .current-time {
+            color: #2196F3;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        .alert-box {
+            width: 300px;
+            height: 60px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            margin: 20px 0;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
-            gap: 15px;
+            background-color: #f5f5f5;
+        }
+        .price-alert {
+            cursor: pointer;
             padding: 15px;
-            background-color: #1a1a1a;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border-radius: 5px;
+            animation: flash 1s infinite;
         }
-        
-        #current .symbol {
-            font-size: 24px;
-            font-weight: bold;
-            color: #00ff88;
+        .price-alert.up {
+            background-color: #ffeb3b;
         }
-        
-        .stats-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 10px;
+        .price-alert.down {
+            background-color: #ff9999;
         }
-        
-        #current .stats {
-            font-size: 16px;
-            color: #888888;
-            background-color: #333333;
-            padding: 5px 10px;
-            border-radius: 4px;
-            min-width: auto;
+        @keyframes flash {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
         }
-        
-        .price-box {
-            display: flex;
-            gap: 15px;
-            font-size: 16px;
-            background-color: #333333;
-            padding: 8px 15px;
-            border-radius: 6px;
-            text-align: center;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .price-box .lp {
-            color: #ff4444;
-        }
-        
-        .price-box .hp {
-            color: #00ff88;
-        }
-        
-        #current .timestamp {
-            font-size: 16px;
-            color: #888888;
-        }
-        
-        /* History section styling */
         .history {
-            margin-top: 15px;
-            border-top: 2px solid #eee;
-            padding-top: 15px;
+            margin-top: 20px;
+            width: 300px;
         }
-        
-        .history .results {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            background-color: #f8f9fa;
+        .history-item {
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #e0e0e0;
             border-radius: 4px;
-            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background-color 0.2s;
         }
-        
-        .history .symbol {
-            font-size: 14px;
-            font-weight: bold;
-            color: #130808;
-        }
-        
-        .history .stats,
-        .history .timestamp {
-            font-size: 14px;
-            color: #999;
-        }
-        
-        .history .price-box {
-            font-size: 14px;
-            background-color: transparent;
-            padding: 4px 8px;
-        }
-        
-        .history .price-box .lp,
-        .history .price-box .hp {
-            color: #666;
-        }
-        
-        /* Chart container responsive sizing */
-        #chartContainer {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 95%;
-            max-width: 800px;
-            height: 60vh;
-            max-height: 400px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            overflow: hidden;
-        }
-
-        @media (max-width: 768px) {
-            #chartContainer {
-                width: 98%;
-                height: 50vh;
-                top: 45%;
-            }
-        }
-        
-        #chartOverlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 999;
-        }
-
-        /* Media Queries */
-        @media (min-width: 768px) {
-            .container {
-                padding: 20px;
-            }
-            
-            #strategy .text {
-                font-size: 28px;
-            }
-            
-            #current.results {
-                flex-direction: row;
-                padding: 25px;
-            }
-            
-            #current .symbol {
-                font-size: 28px;
-            }
-            
-            #current .stats {
-                font-size: 22px;
-            }
-            
-            .price-box {
-                font-size: 22px;
-            }
-            
-            .history .results {
-                flex-direction: row;
-                justify-content: center;
-            }
-            
-            .history .symbol,
-            .history .stats,
-            .history .timestamp,
-            .history .price-box {
-                font-size: 16px;
-            }
+        .history-item:hover {
+            background-color: #d0d0d0;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Add new strategy container -->
-        <div id="strategy">
-            <div class="text">LEVERAGE 1X - GEOMETRIC GRID - 900 GRIDS</div>
-        </div>
-        
-        <div id="current" class="results">
-            <div id="symbol" class="symbol">Waiting for data...</div>
-            <div class="stats-container">
-                <div id="moves" class="stats"></div>
-                <div id="volume" class="stats"></div>
-                <div id="funding" class="stats"></div>
-            </div>
-            <div id="prices" class="price-box"></div>
-            <div id="timestamp" class="timestamp"></div>
-        </div>
-        <div id="history" class="history"></div>
+        <div class="status">● Scanning Up</div>
+        <div class="current-time" id="timeUp"></div>
+        <div class="alert-box" id="currentAlertUp"></div>
+        <div class="history" id="historyUp"></div>
     </div>
-    <div id="chartOverlay"></div>
-    <div id="chartContainer"></div>
+
+    <div class="container">
+        <div class="status down">● Scanning Down</div>
+        <div class="current-time" id="timeDown"></div>
+        <div class="alert-box" id="currentAlertDown"></div>
+        <div class="history" id="historyDown"></div>
+    </div>
 
     <script>
         const socket = io();
-        let chart = null;
-        let candlestickSeries = null;
 
-        // Add click handlers for both current and historical symbols
-        document.getElementById('symbol').addEventListener('click', (e) => {
-            handleSymbolClick(e.target.textContent);
-            e.stopPropagation();
-        });
-
-        document.getElementById('history').addEventListener('click', (e) => {
-            const symbolElement = e.target.closest('.symbol');
-            if (symbolElement) {
-                handleSymbolClick(symbolElement.textContent);
-                e.stopPropagation();
-            }
-        });
-
-        // Unified handler function for symbol clicks
-        function handleSymbolClick(symbol) {
-            if (symbol && symbol !== 'Waiting for data...') {
-                console.log('Fetching data for:', symbol); // Debug log
-                fetchAndDisplayKline(symbol);
-            }
+        function getUTC1Time() {
+            const now = new Date();
+            return new Date(now.getTime() + (2 * 60 * 60 * 1000));
         }
 
-        // Add click handler for closing the chart
-        document.body.addEventListener('click', (e) => {
-            if (!document.getElementById('chartContainer').contains(e.target)) {
-                hideChart();
-            }
-        });
-
-        async function fetchAndDisplayKline(symbol) {
-            try {
-                const response = await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=60&limit=1000`);
-                const data = await response.json();
-                
-                if (data.result && data.result.list) {
-                    const klineList = data.result.list.reverse();
-                    const initialPrice = parseFloat(klineList[0][1]);
-
-                    let maxPercentage = -Infinity;
-                    let minPercentage = Infinity;
-
-                    const klineData = klineList.map(item => {
-                        const open = parseFloat(item[1]);
-                        const high = parseFloat(item[2]);
-                        const low = parseFloat(item[3]);
-                        const close = parseFloat(item[4]);
-
-                        const openPct = ((open - initialPrice) / initialPrice) * 100;
-                        const highPct = ((high - initialPrice) / initialPrice) * 100;
-                        const lowPct = ((low - initialPrice) / initialPrice) * 100;
-                        const closePct = ((close - initialPrice) / initialPrice) * 100;
-
-                        maxPercentage = Math.max(maxPercentage, highPct);
-                        minPercentage = Math.min(minPercentage, lowPct);
-
-                        return {
-                            time: parseInt(item[0]) / 1000,
-                            open: openPct,
-                            high: highPct,
-                            low: lowPct,
-                            close: closePct
-                        };
-                    });
-
-                    setupChart();
-                    candlestickSeries.setData(klineData);
-
-                    // Calculate range and add padding
-                    const range = maxPercentage - minPercentage;
-                    const padding = range * 0.5;
-
-                    candlestickSeries.applyOptions({
-                        autoscaleInfoProvider: () => ({
-                            priceRange: {
-                                minValue: minPercentage - padding,
-                                maxValue: maxPercentage + padding
-                            }
-                        })
-                    });
-
-                    // Calculate the visible logical range for the last 50 candles
-                    const timeScale = chart.timeScale();
-                    const coordRange = timeScale.getVisibleLogicalRange();
-                    if (coordRange !== null) {
-                        const barsRange = {
-                            from: klineData.length - 50,
-                            to: klineData.length - 1
-                        };
-                        timeScale.setVisibleLogicalRange(barsRange);
-                    }
-                    
-                    document.getElementById('chartContainer').style.display = 'block';
-                    document.getElementById('chartOverlay').style.display = 'block';
-                }
-            } catch (error) {
-                console.error('Error fetching kline data:', error);
-            }
+        function updateTime() {
+            const now = getUTC1Time();
+            const timeStr = now.toLocaleTimeString('en-GB', { hour12: false, timeZone: 'UTC' }) + ' UTC+1';
+            document.getElementById('timeUp').textContent = timeStr;
+            document.getElementById('timeDown').textContent = timeStr;
         }
 
-        function setupChart() {
-            if (chart) return;
-            
-            const container = document.getElementById('chartContainer');
-            const isMobile = window.innerWidth < 768;
-            
-            // Get container dimensions
-            const chartWidth = isMobile ? window.innerWidth * 0.95 : 800;  // Default to 800px for desktop
-            const chartHeight = isMobile ? window.innerHeight * 0.6 : 400; // Default to 400px for desktop
-            
-            chart = window.LightweightCharts.createChart(container, {
-                width: chartWidth,
-                height: chartHeight,
-                layout: {
-                    background: { type: 'solid', color: '#ffffff' },
-                    textColor: '#333333',
-                    fontSize: isMobile ? 10 : 12,
-                    fontFamily: 'Arial, sans-serif',
-                },
-                grid: {
-                    vertLines: { color: '#f0f0f0' },
-                    horzLines: { color: '#f0f0f0' },
-                },
-                timeScale: {
-                    timeVisible: true,
-                    secondsVisible: false,
-                    borderVisible: false,
-                    rightOffset: 5,  // Add some space on the right
-                    barSpacing: 6,   // Adjust the spacing between bars
-                },
-                priceScale: {
-                    position: 'right',
-                    mode: 1,
-                    autoScale: false,
-                    scaleMargins: {
-                        top: 0.3,
-                        bottom: 0.3,
-                    },
-                },
-                crosshair: {
-                    mode: 0,
-                }
-            });
-
-            candlestickSeries = chart.addCandlestickSeries({
-                upColor: '#26a69a',
-                downColor: '#ef5350',
-                borderVisible: false,
-                wickUpColor: '#26a69a',
-                wickDownColor: '#ef5350',
-                priceFormat: {
-                    type: 'percent',
-                    precision: 2,
-                    minMove: 0.01,
-                }
-            });
-
-            // Add mouse wheel zoom handler
-            chart.applyOptions({
-                handleScale: {
-                    mouseWheel: true,
-                    pinch: true,
-                    axisPressedMouseMove: {
-                        time: true,
-                        price: true,
-                    },
-                },
-                handleScroll: {
-                    mouseWheel: true,
-                    pressedMouseMove: true,
-                },
-            });
-
-            // Add window resize handler
-            window.addEventListener('resize', () => {
-                const newIsMobile = window.innerWidth < 768;
-                const newWidth = newIsMobile ? window.innerWidth * 0.95 : 800;
-                const newHeight = newIsMobile ? window.innerHeight * 0.6 : 400;
-                chart.applyOptions({
-                    width: newWidth,
-                    height: newHeight,
-                    layout: {
-                        fontSize: newIsMobile ? 10 : 12,
-                    }
-                });
-            });
+        function createAlert(symbol, priceChange, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `price-alert ${type.toLowerCase()}`;
+            alertDiv.textContent = `${symbol} (${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%)`;
+            alertDiv.onclick = () => {
+                window.open(`https://app.goodcrypto.app/trade/BBIT0/${symbol}`, '_blank');
+            };
+            return alertDiv;
         }
 
-        function hideChart() {
-            document.getElementById('chartContainer').style.display = 'none';
-            document.getElementById('chartOverlay').style.display = 'none';
-        }
-
-        function cleanupChart() {
-            if (chart) {
-                chart.remove();
-                chart = null;
-                candlestickSeries = null;
-            }
-        }
-
-        function createResultRow(data) {
-            const lastPrice = data.lastPrice;
-            const lowerPrice = (lastPrice * 0.15).toFixed(4);
-            const higherPrice = (lastPrice * 5).toFixed(4);
-            
-            return `
-                <div class="results">
-                    <div class="symbol">${data.symbol}</div>
-                    <div class="stats">VS: ${data.moves}</div>
-                    <div class="stats">Vol: $${data.volume24h}M</div>
-                    <div class="stats">FR: ${data.fundingRate}%</div>
-                    <div class="price-box">
-                        <div class="lp">LP: ${lowerPrice}</div>
-                        <div class="hp">HP: ${higherPrice}</div>
+        function updateHistory(type, items) {
+            const historyDiv = document.getElementById('history' + type);
+            historyDiv.innerHTML = '<h3>History:</h3>' + 
+                items.map(item => `
+                    <div class="history-item" onclick="window.open('https://app.goodcrypto.app/trade/BBIT0/${item.symbol}', '_blank')">
+                        <span>${item.symbol} (${item.increase >= 0 ? '+' : ''}${item.increase.toFixed(2)}%)</span>
+                        <span>${item.time}</span>
                     </div>
-                    <div class="timestamp">${data.timestamp}</div>
-                </div>
-            `;
+                `).join('');
         }
-        
-        socket.on('scannerUpdate', (data) => {
-            cleanupChart();
-            
-            const lastPrice = data.current.lastPrice;
-            const lowerPrice = (lastPrice * 0.15).toFixed(4);
-            const higherPrice = (lastPrice * 5).toFixed(4);
-            
-            document.getElementById('symbol').textContent = data.current.symbol;
-            document.getElementById('moves').textContent = `VS: ${data.current.moves}`;
-            document.getElementById('volume').textContent = `Vol: $${data.current.volume24h}M`;
-            document.getElementById('funding').textContent = `FR: ${data.current.fundingRate}%`;
-            document.getElementById('prices').innerHTML = `
-                <div class="lp">LP: ${lowerPrice}</div>
-                <div class="hp">HP: ${higherPrice}</div>
-            `;
-            document.getElementById('timestamp').textContent = data.current.timestamp;
-            
-            const historyHtml = data.history
-                .map(createResultRow)
-                .join('');
-            document.getElementById('history').innerHTML = historyHtml;
+
+        socket.on('initialData', (data) => {
+            updateHistory('Up', data.history.up);
+            updateHistory('Down', data.history.down);
         });
+
+        socket.on('priceUpdate', (data) => {
+            const { current, history } = data;
+
+            if (current.up) {
+                const alertBoxUp = document.getElementById('currentAlertUp');
+                alertBoxUp.innerHTML = '';
+                alertBoxUp.appendChild(createAlert(current.up.symbol, current.up.priceChange, 'Up'));
+                setTimeout(() => { alertBoxUp.innerHTML = ''; }, 5000);
+            }
+
+            if (current.down) {
+                const alertBoxDown = document.getElementById('currentAlertDown');
+                alertBoxDown.innerHTML = '';
+                alertBoxDown.appendChild(createAlert(current.down.symbol, current.down.priceChange, 'Down'));
+                setTimeout(() => { alertBoxDown.innerHTML = ''; }, 5000);
+            }
+
+            updateHistory('Up', history.up);
+            updateHistory('Down', history.down);
+        });
+
+        // Initialize time update
+        setInterval(updateTime, 1000);
+        updateTime();
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
