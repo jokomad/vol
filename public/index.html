@@ -2,168 +2,93 @@
 <html>
 <head>
     <title>Bybit Price Monitor</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
         body {
             font-family: Arial, sans-serif;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #f5f5f5;
-        }
-
-        .main-container {
-            width: 100%;
-            max-width: 1200px;
+            margin: 20px;
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 40px;
         }
-
         .container {
-            flex: 1;
-            max-width: 350px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: white;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-
         .status {
             color: #4CAF50;
-            font-size: 16px;
+            font-size: 18px;
             margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
         }
-
         .status.down {
             color: #f44336;
         }
-
         .current-time {
             color: #2196F3;
-            font-size: 14px;
-            margin-bottom: 15px;
+            font-size: 16px;
+            margin-bottom: 20px;
         }
-
         .alert-box {
-            width: 100%;
+            width: 300px;
             height: 60px;
-            border: 2px solid #eee;
+            border: 2px solid #ccc;
             border-radius: 8px;
-            margin: 15px 0;
+            margin: 20px 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: white;
+            background-color: #f5f5f5;
         }
-
         .price-alert {
             cursor: pointer;
-            padding: 12px;
+            padding: 15px;
             border-radius: 5px;
             animation: flash 1s infinite;
-            font-size: 14px;
-            text-align: center;
         }
-
         .price-alert.up {
             background-color: #ffeb3b;
         }
-
         .price-alert.down {
             background-color: #ff9999;
         }
-
         @keyframes flash {
             0% { opacity: 1; }
             50% { opacity: 0.8; }
             100% { opacity: 1; }
         }
-
         .history {
-            margin-top: 15px;
-            width: 100%;
+            margin-top: 20px;
+            width: 300px;
         }
-
         .history-item {
-            padding: 10px;
+            padding: 8px;
             margin: 5px 0;
-            background-color: #f8f8f8;
+            background-color: #e0e0e0;
             border-radius: 4px;
             display: flex;
             justify-content: space-between;
             cursor: pointer;
             transition: background-color 0.2s;
-            font-size: 13px;
         }
-
         .history-item:hover {
-            background-color: #eeeeee;
-        }
-
-        @media (max-width: 768px) {
-            .main-container {
-                flex-direction: column;
-                align-items: center;
-                gap: 30px;
-            }
-
-            .container {
-                width: 100%;
-            }
-
-            body {
-                padding: 10px;
-            }
-
-            .status {
-                font-size: 14px;
-            }
-
-            .current-time {
-                font-size: 13px;
-            }
-
-            .price-alert {
-                font-size: 13px;
-                padding: 10px;
-            }
-
-            .history-item {
-                font-size: 12px;
-            }
+            background-color: #d0d0d0;
         }
     </style>
 </head>
 <body>
-    <div class="main-container">
-        <div class="container">
-            <div class="status">● Scanning Up</div>
-            <div class="current-time" id="timeUp"></div>
-            <div class="alert-box" id="currentAlertUp"></div>
-            <div class="history" id="historyUp"></div>
-        </div>
+    <div class="container">
+        <div class="status">● Scanning Up</div>
+        <div class="current-time" id="timeUp"></div>
+        <div class="alert-box" id="currentAlertUp"></div>
+        <div class="history" id="historyUp"></div>
+    </div>
 
-        <div class="container">
-            <div class="status down">● Scanning Down</div>
-            <div class="current-time" id="timeDown"></div>
-            <div class="alert-box" id="currentAlertDown"></div>
-            <div class="history" id="historyDown"></div>
-        </div>
+    <div class="container">
+        <div class="status down">● Scanning Down</div>
+        <div class="current-time" id="timeDown"></div>
+        <div class="alert-box" id="currentAlertDown"></div>
+        <div class="history" id="historyDown"></div>
     </div>
 
     <script>
@@ -181,32 +106,25 @@
             document.getElementById('timeDown').textContent = timeStr;
         }
 
-        setInterval(updateTime, 1000);
-        updateTime();
-
-        function createAlert(symbol, change, isUp = true) {
-            const alert = document.createElement('div');
-            alert.className = `price-alert ${isUp ? 'up' : 'down'}`;
-            alert.textContent = `${symbol}: ${change.toFixed(2)}%`;
-            return alert;
-        }
-
-        function createHistoryItem(item) {
-            const historyItem = document.createElement('div');
-            historyItem.className = 'history-item';
-            historyItem.innerHTML = `
-                <span>${item.symbol}</span>
-                <span>${item.increase.toFixed(2)}% at ${item.time}</span>
-            `;
-            return historyItem;
+        function createAlert(symbol, priceChange, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `price-alert ${type.toLowerCase()}`;
+            alertDiv.textContent = `${symbol} (${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%)`;
+            alertDiv.onclick = () => {
+                window.open(`https://app.goodcrypto.app/trade/BBIT0/${symbol}`, '_blank');
+            };
+            return alertDiv;
         }
 
         function updateHistory(type, items) {
-            const historyElement = document.getElementById(`history${type}`);
-            historyElement.innerHTML = '';
-            items.slice(0, 50).forEach(item => {
-                historyElement.appendChild(createHistoryItem(item));
-            });
+            const historyDiv = document.getElementById('history' + type);
+            historyDiv.innerHTML = '<h3>History:</h3>' + 
+                items.map(item => `
+                    <div class="history-item" onclick="window.open('https://app.goodcrypto.app/trade/BBIT0/${item.symbol}', '_blank')">
+                        <span>${item.symbol} (${item.increase >= 0 ? '+' : ''}${item.increase.toFixed(2)}%)</span>
+                        <span>${item.time}</span>
+                    </div>
+                `).join('');
         }
 
         socket.on('initialData', (data) => {
@@ -215,21 +133,29 @@
         });
 
         socket.on('priceUpdate', (data) => {
-            if (data.current.up) {
-                const alertBox = document.getElementById('currentAlertUp');
-                alertBox.innerHTML = '';
-                alertBox.appendChild(createAlert(data.current.up.symbol, data.current.up.priceChange));
-                updateHistory('Up', data.history.up);
-                setTimeout(() => { alertBox.innerHTML = ''; }, 5000);
+            const { current, history } = data;
+
+            if (current.up) {
+                const alertBoxUp = document.getElementById('currentAlertUp');
+                alertBoxUp.innerHTML = '';
+                alertBoxUp.appendChild(createAlert(current.up.symbol, current.up.priceChange, 'Up'));
+                setTimeout(() => { alertBoxUp.innerHTML = ''; }, 5000);
             }
-            if (data.current.down) {
-                const alertBox = document.getElementById('currentAlertDown');
-                alertBox.innerHTML = '';
-                alertBox.appendChild(createAlert(data.current.down.symbol, data.current.down.priceChange, false));
-                updateHistory('Down', data.history.down);
-                setTimeout(() => { alertBox.innerHTML = ''; }, 5000);
+
+            if (current.down) {
+                const alertBoxDown = document.getElementById('currentAlertDown');
+                alertBoxDown.innerHTML = '';
+                alertBoxDown.appendChild(createAlert(current.down.symbol, current.down.priceChange, 'Down'));
+                setTimeout(() => { alertBoxDown.innerHTML = ''; }, 5000);
             }
+
+            updateHistory('Up', history.up);
+            updateHistory('Down', history.down);
         });
+
+        // Initialize time update
+        setInterval(updateTime, 1000);
+        updateTime();
     </script>
 </body>
 </html>
