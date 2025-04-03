@@ -33,10 +33,15 @@ class PriceScanner extends EventEmitter {
             const response = await fetch('https://api.bybit.com/v5/market/tickers?category=linear');
             const data = await response.json();
             return data.result.list
-                .filter(item => item.symbol.endsWith('USDT'))
+                .filter(item => 
+                    item.symbol.endsWith('USDT') && 
+                    parseFloat(item.turnover24h) > 10000000 && // Filter for turnover > 10M
+                    parseFloat(item.deliveryTime) === 0 // Filter for deliveryTime = 0
+                )
                 .map(item => ({
                     symbol: item.symbol,
-                    lastPrice: parseFloat(item.lastPrice)
+                    lastPrice: parseFloat(item.lastPrice),
+                    turnover24h: parseFloat(item.turnover24h)
                 }));
         } catch (error) {
             console.error('Error fetching market data:', error);
@@ -178,4 +183,5 @@ const port = process.env.PORT || 3000;
 http.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
 });
+
 
