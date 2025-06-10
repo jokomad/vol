@@ -403,7 +403,7 @@ class SymbolScanner extends EventEmitter {
     // New method to fetch historical candles
     async fetchHistoricalCandles(symbol) {
         try {
-            const response = await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=D&limit=1000`);
+            const response = await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=120&limit=1000`);
             const data = await response.json();
             
             if (!data.result?.list || data.result.list.length === 0) {
@@ -458,20 +458,25 @@ class SymbolScanner extends EventEmitter {
         };
     }
 
-    // Check if trade meets criteria
-    checkTradeCriteria(currentPrice, bollingerBands, openPrice, symbol) {
-        if (!bollingerBands) return false;
-        if (currentPrice >= bollingerBands.middle) return false;
-        if (currentPrice <= openPrice) return false;
-
-        const previousClose = this.priceHistory.get(symbol)?.slice(-2)[0]?.price;
-        if (!previousClose || currentPrice <= previousClose) return false;
-
-        const profitTarget = currentPrice * 1.10;
-        const canTakeProfit = profitTarget < bollingerBands.middle;
-        
-        return canTakeProfit;
+    
+ // Check if trade meets criteria
+checkTradeCriteria(currentPrice, bollingerBands, openPrice, symbol) {
+    if (!bollingerBands) return false;
+    
+    // Get price history
+    const priceHistory = this.priceHistory.get(symbol) || [];
+    if (priceHistory.length < 2) return false; // Need at least current and previous candle
+    
+    const currentCandle = priceHistory[priceHistory.length - 1];
+    const previousCandle = priceHistory[priceHistory.length - 2];
+    
+    // Check if current price is crossing over the upper Bollinger Band
+    if (currentPrice >= bollingerBands.upper && previousCandle.price < bollingerBands.upper) {
+        return true;
     }
+    
+    return false;
+}
 
     // New criteria
     checkTradeCriteria2(currentPrice, bollingerBands, openPrice, symbol) {
@@ -610,11 +615,6 @@ class SymbolScanner extends EventEmitter {
                         if (!isNotDelisting) return;
 
                         const meetsTradeConditions = this.checkTradeCriteria(
-                            currentPrice,
-                            bollingerBands,
-                            openPrice,
-                            result.symbol
-                        ) || this.checkTradeCriteria2(
                             currentPrice,
                             bollingerBands,
                             openPrice,
@@ -761,6 +761,8 @@ const port = 3000;
 http.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
 });
+
+
 
 
 
