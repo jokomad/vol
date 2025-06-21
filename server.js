@@ -403,7 +403,7 @@ class SymbolScanner extends EventEmitter {
     // New method to fetch historical candles
     async fetchHistoricalCandles(symbol) {
         try {
-            const response = await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=120&limit=1000`);
+            const response = await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=15&limit=1000`);
             const data = await response.json();
             
             if (!data.result?.list || data.result.list.length === 0) {
