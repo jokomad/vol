@@ -460,21 +460,77 @@ class SymbolScanner extends EventEmitter {
 
     
  // Check if trade meets criteria
-checkTradeCriteria(currentPrice, bollingerBands, openPrice, symbol) {
+async checkTradeCriteria(currentPrice, bollingerBands, openPrice, symbol) {
     if (!bollingerBands) return false;
-    
+
     // Get price history
     const priceHistory = this.priceHistory.get(symbol) || [];
     if (priceHistory.length < 2) return false; // Need at least current and previous candle
-    
+
     const currentCandle = priceHistory[priceHistory.length - 1];
     const previousCandle = priceHistory[priceHistory.length - 2];
-    
+
+    // Skip signal if previous candle was already above upper Bollinger Band (body or wick)
+    if (previousCandle.high >= bollingerBands.upper) {
+        return false;
+    }
+
     // Check if current price is crossing over the upper Bollinger Band
     if (currentPrice >= bollingerBands.upper && previousCandle.price < bollingerBands.upper) {
+
+        // Get historical candles for detailed analysis
+        const historicalCandles = await this.fetchHistoricalCandles(symbol);
+        if (!historicalCandles || historicalCandles.length < 3) {
+            return true; // If we can't get historical data, use basic criteria
+        }
+
+        // Find the most recent candle that interacted with lower Bollinger Band
+        let lowerBandCandleIndex = -1;
+        for (let i = 0; i < historicalCandles.length; i++) {
+            const candle = historicalCandles[i];
+
+            // Calculate Bollinger Bands for this point in time
+            const candlesForBB = historicalCandles.slice(i);
+            const bbForCandle = this.calculateBollingerBands(candlesForBB);
+
+            if (bbForCandle && (
+                candle.high >= bbForCandle.lower ||
+                candle.low <= bbForCandle.lower ||
+                candle.open >= bbForCandle.lower ||
+                candle.close >= bbForCandle.lower
+            )) {
+                lowerBandCandleIndex = i;
+                break; // Found the most recent one
+            }
+        }
+
+        // If no lower band interaction found, use basic criteria
+        if (lowerBandCandleIndex === -1) {
+            return true;
+        }
+
+        // Check all candles between lower band candle and current candle
+        for (let i = lowerBandCandleIndex + 1; i < historicalCandles.length; i++) {
+            const candle = historicalCandles[i];
+
+            // Calculate Bollinger Bands for this point in time
+            const candlesForBB = historicalCandles.slice(i);
+            const bbForCandle = this.calculateBollingerBands(candlesForBB);
+
+            if (bbForCandle && (
+                candle.high >= bbForCandle.upper ||
+                candle.low >= bbForCandle.upper ||
+                candle.open >= bbForCandle.upper ||
+                candle.close >= bbForCandle.upper
+            )) {
+                // Found a candle that touched upper band between lower band crossing and now
+                return false;
+            }
+        }
+
         return true;
     }
-    
+
     return false;
 }
 
@@ -614,7 +670,7 @@ checkTradeCriteria(currentPrice, bollingerBands, openPrice, symbol) {
                         const isNotDelisting = await this.checkDelistingStatus(result.symbol);                        
                         if (!isNotDelisting) return;
 
-                        const meetsTradeConditions = this.checkTradeCriteria(
+                        const meetsTradeConditions = await this.checkTradeCriteria(
                             currentPrice,
                             bollingerBands,
                             openPrice,
