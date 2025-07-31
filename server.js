@@ -649,44 +649,58 @@ async checkTradeCriteria(currentPrice, bollingerBands, openPrice, symbol) {
             this.cleanupPerformers();
             await this.fetchTickers();
             this.calculateVolatility();
-            const result = await this.findBestPerformer();
+            // Get top 10 performers instead of just the best one
+            const minVolume = 10000000; // $10M minimum 24h volume
+            const top10Performers = Array.from(this.volatilityScores.entries())
+                .filter(([symbol]) => this.volumes.get(symbol) >= minVolume)
+                .sort(([symbolA, scoreA], [symbolB, scoreB]) => {
+                    const scoreDiff = scoreB - scoreA;
+                    if (Math.abs(scoreDiff) > 0.0001) {
+                        return scoreDiff;
+                    }
+                    return this.volumes.get(symbolB) - this.volumes.get(symbolA);
+                })
+                .slice(0, 10); // Take top 10
 
-            if (result.symbol) {
+            // Check each performer until we find one that meets trade criteria
+            for (const [symbol] of top10Performers) {
                 const timestamp = new Date();
-                const priceHistory = this.priceHistory.get(result.symbol);
+                const priceHistory = this.priceHistory.get(symbol);
                 const currentPrice = priceHistory?.slice(-1)[0]?.price;
-                
-                const historicalCandles = await this.fetchHistoricalCandles(result.symbol);
+
+                if (!currentPrice) continue;
+
+                const historicalCandles = await this.fetchHistoricalCandles(symbol);
                 if (historicalCandles && historicalCandles.length >= 2) {
                     const currentCandle = historicalCandles[0];
                     const previousCandle = historicalCandles[1];
-                    
+
                     const openPrice = currentCandle.open;
                     const previousClose = previousCandle.close;
 
                     if (currentPrice && openPrice && previousClose) {
                         const bollingerBands = this.calculateBollingerBands(historicalCandles);
-                        
-                        const isNotDelisting = await this.checkDelistingStatus(result.symbol);                        
-                        if (!isNotDelisting) return;
+
+                        const isNotDelisting = await this.checkDelistingStatus(symbol);
+                        if (!isNotDelisting) continue;
 
                         const meetsTradeConditions = await this.checkTradeCriteria(
                             currentPrice,
                             bollingerBands,
                             openPrice,
-                            result.symbol
+                            symbol
                         );
 
                         if (meetsTradeConditions) {
                             const cetTime = this.formatCETTime();
-                            const tradeLog = `${result.symbol} MEETS ALL TRADE CONDITIONS! - CET: ${cetTime}`;
+                            const tradeLog = `${symbol} MEETS ALL TRADE CONDITIONS! - CET: ${cetTime}`;
                             console.log(tradeLog);
-                            this.updateCandidateHistory(result.symbol, timestamp);
-                            
+                            this.updateCandidateHistory(symbol, timestamp);
+
                             // Add Telegram notification
-                            await this.sendTelegramAlert(result.symbol, currentPrice);
-                            
-                            this.emit('bestPerformerFound', { 
+                            await this.sendTelegramAlert(symbol, currentPrice);
+
+                            this.emit('bestPerformerFound', {
                                 potentialCandidates: Array.from(this.candidateHistory.entries())
                                     .map(([symbol, history]) => ({
                                         symbol,
@@ -698,6 +712,9 @@ async checkTradeCriteria(currentPrice, bollingerBands, openPrice, symbol) {
                                 scannerLog: scannerLog,
                                 tradeLog: tradeLog
                             });
+
+                            // Stop searching once we find a valid signal
+                            break;
                         }
                     }
                 }
